@@ -195,6 +195,27 @@ From the open tickets (Step 3):
   - pct_open = round(org_open / total_open_chime * 100)
   - pct_closed = round(org_closed / total_closed_chime * 100)
 
+**5k** Pre-compute JQL hyperlinks for table rows.
+
+For each BREAKDOWN ROW, collect the list of emails from SQUAD MAPPING that map to that row via SQUAD GROUPING. These are the per-squad email lists used in JQL links.
+
+URL-encode JQL using Python: urllib.parse.quote(jql_string, safe='')
+Base URL: https://chime.atlassian.net/issues/?jql=<encoded>
+
+Generate the following JQL URLs:
+- Per squad row (for Open Tickets by Squad, Priority Breakdown, Age by Squad tables):
+  JQL: project = TRI AND statusCategory != Done AND assignee in ("<email1>","<email2>",...)
+  where the emails are all people mapping to that breakdown row.
+
+- Per status (for Status Distribution table):
+  JQL: project = TRI AND status = "<Status Name>" AND assignee in (<all SSI org emails>)
+
+- Per priority (for Priority Distribution table):
+  JQL: project = TRI AND statusCategory != Done AND priority = <PriorityName> AND assignee in (<all SSI org emails>)
+  Note: use priority name exactly as returned by Jira (e.g. "High", "Medium", "Low", "Critical"); for "Unknown" priority use: priority is EMPTY
+
+All JQL email lists should use the actual emails gathered from Glean in Step 1 (not the hardcoded list), to stay current with org changes.
+
 Percentage formula: round(count/total*100). Show "<1%" if rounds to 0 but count > 0.
 
 ---
@@ -243,34 +264,34 @@ Example: "As of May 4, 2026, the SSI org's engineering, product, and design team
 
 | Squad / Group | Open | % of SSI Open |
 |---|---|---|
-[One row per breakdown row with count > 0. Sorted desc. Blank separator between squad rows and area rows.]
+[One row per breakdown row with count > 0. Sorted desc. Blank separator between squad rows and area rows. Hyperlink each squad name to its pre-computed JQL URL from Step 5k, format: [Squad Name](url)]
 | **Total** | **N** | |
 
 ## Status Distribution (Open Tickets)
 
 | Status | Count | % |
 |---|---|---|
-[Rows for all statuses with count > 0. Sort desc.]
+[Rows for all statuses with count > 0. Sort desc. Hyperlink each status name to its pre-computed JQL URL from Step 5k.]
 | **Total** | **N** | |
 
 ## Priority Distribution (Open Tickets)
 
 | Priority | Count | % |
 |---|---|---|
-[Sorted desc. Only include priorities with count > 0.]
+[Sorted desc. Only include priorities with count > 0. Hyperlink each priority name to its pre-computed JQL URL from Step 5k.]
 | **Total** | **N** | |
 
 ## Priority Breakdown by Squad
 
 | Squad / Group | Critical | High | Medium | Low | Unknown |
 |---|---|---|---|---|---|
-[Sorted desc by total open. Blank separator between squad and area rows. Use 0 for missing levels.]
+[Sorted desc by total open. Blank separator between squad and area rows. Use 0 for missing levels. Hyperlink each squad name to its pre-computed open JQL URL from Step 5k.]
 
 ## Ticket Age by Squad (Open Tickets)
 
 | Squad / Group | < 30 days | 30–90 days | 90–180 days | > 180 days |
 |---|---|---|---|---|
-[Sorted desc by total open. Blank separator between squad and area rows. Use 0 if none in a bucket.]
+[Sorted desc by total open. Blank separator between squad and area rows. Use 0 if none in a bucket. Hyperlink each squad name to its pre-computed open JQL URL from Step 5k.]
 
 ---
 
