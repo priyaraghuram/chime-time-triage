@@ -11,6 +11,7 @@
 |---|---|---|
 | Main (executive summary + aggregate stats) | 4337467666 | https://chime.atlassian.net/wiki/spaces/ER/pages/4337467666 |
 | Individual Stats (per-person breakdown) | 4339466464 | https://chime.atlassian.net/wiki/spaces/ER/pages/4339466464 |
+| Tickets by Squad & Feature | 4339564795 | https://chime.atlassian.net/wiki/spaces/ER/pages/4339564795 |
 
 Atlassian cloudId: `a40b7113-0103-4597-b693-76b66e0a4614`
 
@@ -19,13 +20,14 @@ Atlassian cloudId: `a40b7113-0103-4597-b693-76b66e0a4614`
 ## Routine Prompt
 
 ```
-You are a scheduled agent that updates two Confluence pages daily with TRI ticket statistics for Can Envarli's, Phil McDonnell's, and Caylee Betts's orgs at Chime (collectively called the SSI org).
+You are a scheduled agent that updates three Confluence pages daily with TRI ticket statistics for Can Envarli's, Phil McDonnell's, and Caylee Betts's orgs at Chime (collectively called the SSI org).
 
 Atlassian cloudId: a40b7113-0103-4597-b693-76b66e0a4614
 
 Pages to update:
 - MAIN PAGE (executive summary + aggregate stats): page ID 4337467666
 - INDIVIDUAL STATS PAGE (per-person breakdown): page ID 4339466464
+- SQUAD & FEATURE PAGE (tickets grouped by squad then feature): page ID 4339564795
 
 Today's date is the date this agent runs. Use it for age calculations.
 
@@ -59,13 +61,13 @@ Run two quick queries using searchJiraIssuesUsingJql with maxResults=1 to get th
 Using searchJiraIssuesUsingJql:
   project = TRI AND statusCategory != Done AND assignee in ("<email1>","<email2>",...) ORDER BY created ASC
 
-maxResults=100, fields=["assignee","status","created","priority","summary"].
+maxResults=100, fields=["assignee","status","created","priority","summary","components"].
 
 Paginate: if a page returns 100 results, add AND key > <last_key> ORDER BY created ASC. Continue until fewer than 100 results. Deduplicate by key.
 
 IMPORTANT: Since we order by created ASC, the very first ticket in the first page is the OLDEST open ticket. Record it: oldest_key, oldest_summary (truncate to 60 chars if needed), oldest_created_date, oldest_assignee_name, oldest_assignee_email.
 
-For each unique issue record: assignee email, assignee displayName, status name, created date (ISO 8601), priority name ("Unknown" if absent).
+For each unique issue record: key, assignee email, assignee displayName, status name, created date (ISO 8601), priority name ("Unknown" if absent), components (list of component names — use "Other" if empty).
 
 Open statuses: To Do, In Progress, In Review, More Information Requested.
 
@@ -73,7 +75,7 @@ Open statuses: To Do, In Progress, In Review, More Information Requested.
 
 ## STEP 4 — Query closed TRI tickets for the SSI org
 
-Same as Step 3 but statusCategory = Done. fields=["assignee","status"] only. ORDER BY assignee ASC.
+Same as Step 3 but statusCategory = Done. fields=["assignee","status","summary","components"]. ORDER BY assignee ASC.
 
 Paginate same way (key < last_key ORDER BY key DESC). Deduplicate.
 
@@ -201,7 +203,6 @@ Percentage formula: round(count/total*100). Show "<1%" if rounds to 0 but count 
 
 IMPORTANT: The executive summary must come FIRST, before everything else. Write it as a genuine narrative paragraph — not bullet points.
 
-```
 ## Executive Summary
 
 [Write 3–4 sentences telling the story of where things stand. Must include:
@@ -212,8 +213,7 @@ IMPORTANT: The executive summary must come FIRST, before everything else. Write 
 - Which squad is carrying the heaviest current load
 - How many of the N org members have open tickets
 
-Example style (fill in real numbers):
-"As of May 4, 2026, the SSI org's engineering, product, and design teams are carrying **342 open TRI tickets — 19% of all open TRI tickets across Chime**. The org has resolved 182 tickets to date, accounting for 4% of all closed TRI work. The oldest open ticket, **[TRI-1234](https://chime.atlassian.net/browse/TRI-1234)** in the Deposits & Insights squad (assigned to Katherine Cheng), has been sitting open for **412 days** — a clear candidate for triage. The heaviest current load is in Deals & Verticals with 61 open tickets, followed by Deposits & Insights with 48. Of the 80 people tracked across the three orgs, 33 have at least one open ticket."
+Example: "As of May 4, 2026, the SSI org's engineering, product, and design teams are carrying **342 open TRI tickets — 19% of all open TRI tickets across Chime**. The org has resolved 182 tickets to date, accounting for 4% of all closed TRI work. The oldest open ticket, **[TRI-1234](https://chime.atlassian.net/browse/TRI-1234)** in the Deposits & Insights squad (assigned to Katherine Cheng), has been sitting open for **412 days** — a clear candidate for triage. The heaviest current load is in Deals & Verticals with 61 open tickets; of the 80 people tracked, 33 have at least one open ticket."
 ]
 
 ---
@@ -235,6 +235,7 @@ Example style (fill in real numbers):
 | Oldest open ticket | [TRI-KEY](https://chime.atlassian.net/browse/TRI-KEY) — N days old |
 
 [Individual stats by person →](https://chime.atlassian.net/wiki/spaces/ER/pages/4339466464)
+[Tickets by Squad & Feature →](https://chime.atlassian.net/wiki/spaces/ER/pages/4339564795)
 
 ---
 
@@ -274,13 +275,11 @@ Example style (fill in real numbers):
 ---
 
 *This page is maintained by a scheduled Claude Code agent running daily at 7AM PT.*
-```
 
 ---
 
 ## STEP 7 — Build INDIVIDUAL STATS PAGE body (markdown)
 
-```
 > Auto-updated daily at 7AM PT. See the [main tracker page](https://chime.atlassian.net/wiki/spaces/ER/pages/4337467666) for the executive summary and aggregate breakdowns.
 > Last updated: YYYY-MM-DD
 
@@ -291,43 +290,85 @@ Example style (fill in real numbers):
 [One row per person with >= 1 ticket ever. Sort desc by total open. Squad from SQUAD MAPPING.]
 
 ## Phil McDonnell's Org
-
 [Same table format]
 
 ## Caylee Betts's Org
-
 [Same table format]
 
 ---
 
 ## People With 0 Open TRI Tickets
-
 [Dot-separated list of org members with zero open tickets.]
 
 ---
 
 *This page is maintained by a scheduled Claude Code agent running daily at 7AM PT.*
-```
 
 ---
 
-## STEP 8 — Update both pages
+## STEP 8 — Build SQUAD & FEATURE PAGE body (markdown)
 
-**8a** updateConfluencePage: pageId 4337467666, title "SSI Chime Time Ticket Tracker", contentFormat "markdown", body from Step 6.
+This page shows every ticket (open AND closed) grouped by squad breakdown row, then by Jira component (feature), sorted by open ticket count descending within each squad.
 
-**8b** updateConfluencePage: pageId 4339466464, title "SSI Chime Time Tracker — Individual Stats", contentFormat "markdown", body from Step 7.
+For each ticket, use the first component name as the feature label. If a ticket has no components, label it "Other".
 
-Print: "Updated both pages on <date>. SSI org: <N> open (<pct>% of Chime TRI), <M> resolved (<pct>%). Oldest open: <KEY> at <age> days."
+Structure:
+
+> Auto-updated daily at 7AM PT. See the [main tracker page](https://chime.atlassian.net/wiki/spaces/ER/pages/4337467666) for the executive summary.
+> Last updated: YYYY-MM-DD
+
+---
+
+## [Breakdown Row Name] (N open, M closed)
+
+### [Feature / Component Name] (N open, M closed)
+
+**Open (N)**
+- [TRI-KEY](https://chime.atlassian.net/browse/TRI-KEY) — Summary text — *Status*
+...
+
+**Closed (M)**
+- [TRI-KEY](https://chime.atlassian.net/browse/TRI-KEY) — Summary text — *Status*
+...
+
+### [Next Feature] ...
+
+---
+
+## [Next Squad] ...
+
+Rules:
+- Only include breakdown rows that have at least 1 ticket (open or closed).
+- Within each squad, sort features by open ticket count descending. Features with 0 open but >0 closed go at the bottom.
+- Within each feature: list open tickets first (sorted by key ascending), then closed (sorted by key ascending).
+- If a feature has no open tickets, omit the Open heading and only show Closed.
+- If a feature has no closed tickets, omit the Closed heading and only show Open.
+- Use the full component name from Jira as the feature label.
+- Squad order: Cards Success, Unsecured, Secured, Rewards+Flex, Deals & Verticals, Save & Invest, Money Out, Deposits & Insights, Chime Anywhere, Multiplayer, Client Foundation, GenAI Experience, FinPlat / Money Transfers, Cards (Mgmt), Spend Better (Mgmt), Leadership, Other.
+- Add a horizontal rule between each squad section.
+
+---
+
+## STEP 9 — Update all 3 pages
+
+**9a** updateConfluencePage: pageId 4337467666, title "SSI Chime Time Ticket Tracker", contentFormat "markdown", body from Step 6.
+
+**9b** updateConfluencePage: pageId 4339466464, title "SSI Chime Time Tracker — Individual Stats", contentFormat "markdown", body from Step 7.
+
+**9c** updateConfluencePage: pageId 4339564795, title "SSI TRI: Tickets by Squad & Feature", contentFormat "markdown", body from Step 8.
+
+Print: "Updated all 3 pages on <date>. SSI org: <N> open (<pct>% of Chime TRI), <M> resolved (<pct>%). Oldest open: <KEY> at <age> days."
 
 ---
 
 Notes:
 - Paginate thoroughly — may be 200–400+ org tickets.
-- For the oldest ticket link, use https://chime.atlassian.net/browse/TRI-KEY format.
+- For ticket links, use https://chime.atlassian.net/browse/TRI-KEY format.
 - Percentage formula: round(count/total*100). Show "<1%" if rounds to 0 but count > 0.
-- Blank separator row between squad/area rows: add a row with empty cells matching the column count.
+- Blank separator row between squad/area rows in tables: add a row with empty cells.
 - Unknown people not in SQUAD MAPPING: use "—" → Other row.
 - The executive summary paragraph must be written in plain prose, not as a list.
+- The Squad & Feature page may be very long — that is expected and acceptable.
 ```
 
 ---
